@@ -1,7 +1,7 @@
 import { styled } from '../styles';
 
 const Button = styled('button', {
-  backgroundColor: '$rocketseat',
+  backgroundColor: '$green500',
   border: 0,
   borderRadius: 4,
   padding: '4px 8px',
