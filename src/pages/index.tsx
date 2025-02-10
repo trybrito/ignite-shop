@@ -3,11 +3,20 @@ import { useKeenSlider } from 'keen-slider/react';
 import 'keen-slider/keen-slider.min.css';
 
 import { HomeContainer, ProductLink } from '../styles/pages/home';
-import shirt1 from '../assets/shirts/1.png';
-import shirt2 from '../assets/shirts/2.png';
-import shirt3 from '../assets/shirts/3.png';
+import { stripe } from '../lib/stripe';
+import Stripe from 'stripe';
+import { GetStaticProps } from 'next';
 
-export default function Home() {
+interface HomeProps {
+  products: {
+    id: string;
+    name: string;
+    imageUrl: string;
+    price: number;
+  }[];
+}
+
+export default function Home({ products }: HomeProps) {
   const [sliderRef] = useKeenSlider({
     slides: {
       perView: 3,
@@ -17,41 +26,53 @@ export default function Home() {
 
   return (
     <HomeContainer ref={sliderRef} className="keen-slider">
-      <ProductLink href="#" className="keen-slider__slide">
-        <Image src={shirt1} width={520} height={480} alt="" />
+      {products.map((product) => {
+        return (
+          <ProductLink key={product.id} href="#" className="keen-slider__slide">
+            <Image src={product.imageUrl} width={520} height={480} alt="" />
 
-        <footer>
-          <strong>Camiseta Beyond the Limits</strong>
-          <span>R$ 79,90</span>
-        </footer>
-      </ProductLink>
-
-      <ProductLink href="#" className="keen-slider__slide">
-        <Image src={shirt2} width={520} height={480} alt="" />
-
-        <footer>
-          <strong>Camiseta Beyond the Limits</strong>
-          <span>R$ 79,90</span>
-        </footer>
-      </ProductLink>
-
-      <ProductLink href="#" className="keen-slider__slide">
-        <Image src={shirt3} width={520} height={480} alt="" />
-
-        <footer>
-          <strong>Camiseta Beyond the Limits</strong>
-          <span>R$ 79,90</span>
-        </footer>
-      </ProductLink>
-
-      <ProductLink href="#" className="keen-slider__slide">
-        <Image src={shirt3} width={520} height={480} alt="" />
-
-        <footer>
-          <strong>Camiseta Beyond the Limits</strong>
-          <span>R$ 79,90</span>
-        </footer>
-      </ProductLink>
+            <footer>
+              <strong>{product.name}</strong>
+              <span>{product.price}</span>
+            </footer>
+          </ProductLink>
+        );
+      })}
     </HomeContainer>
   );
 }
+
+export const getStaticProps: GetStaticProps = async () => {
+  const response = await stripe.products.list({
+    expand: ['data.default_price'],
+  });
+
+  const products = response.data.map((product) => {
+    const price = product.default_price as Stripe.Price;
+    const convertedPrice = price.unit_amount ? price.unit_amount / 100 : 0;
+    const formattedPrice = convertedPrice.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+
+    return {
+      id: product.id,
+      name: product.name,
+      imageUrl: product.images[0],
+      price: formattedPrice,
+    };
+  });
+
+  const seconds = 1;
+  const minute = seconds * 60;
+  const hour = minute * 60;
+
+  const revalidateEveryTwoHours = hour * 2;
+
+  return {
+    props: {
+      products,
+    },
+    revalidate: revalidateEveryTwoHours,
+  };
+};
