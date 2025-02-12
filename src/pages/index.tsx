@@ -2,10 +2,11 @@ import Image from 'next/image';
 import { useKeenSlider } from 'keen-slider/react';
 import 'keen-slider/keen-slider.min.css';
 
-import { HomeContainer, ProductLink } from '../styles/pages/home';
+import { HomeContainer } from '../styles/pages/home';
 import { stripe } from '../lib/stripe';
 import Stripe from 'stripe';
 import { GetStaticProps } from 'next';
+import Link from 'next/link';
 
 interface HomeProps {
   products: {
@@ -28,14 +29,18 @@ export default function Home({ products }: HomeProps) {
     <HomeContainer ref={sliderRef} className="keen-slider">
       {products.map((product) => {
         return (
-          <ProductLink key={product.id} href="#" className="keen-slider__slide">
+          <Link
+            href={`/product/${product.id}`}
+            key={product.id}
+            className="keen-slider__slide"
+          >
             <Image src={product.imageUrl} width={520} height={480} alt="" />
 
             <footer>
               <strong>{product.name}</strong>
               <span>{product.price}</span>
             </footer>
-          </ProductLink>
+          </Link>
         );
       })}
     </HomeContainer>
@@ -48,7 +53,8 @@ export const getStaticProps: GetStaticProps = async () => {
   });
 
   const products = response.data.map((product) => {
-    const price = product.default_price as Stripe.Price;
+    const price = product.default_price as Stripe.Price; // In cents
+
     const convertedPrice = price.unit_amount ? price.unit_amount / 100 : 0;
     const formattedPrice = convertedPrice.toLocaleString('pt-BR', {
       style: 'currency',
@@ -63,8 +69,8 @@ export const getStaticProps: GetStaticProps = async () => {
     };
   });
 
-  const seconds = 1;
-  const minute = seconds * 60;
+  const second = 1;
+  const minute = second * 60;
   const hour = minute * 60;
 
   const revalidateEveryTwoHours = hour * 2;
