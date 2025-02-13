@@ -4,9 +4,11 @@ import {
   ProductContainer,
   ProductDetails,
 } from '@/src/styles/pages/product';
+import axios from 'axios';
 import { GetStaticPaths, GetStaticProps } from 'next';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { useState } from 'react';
 import Stripe from 'stripe';
 
 interface ProductProps {
@@ -16,14 +18,37 @@ interface ProductProps {
     imageURL: string;
     description: string;
     price: string;
+    defaultPriceId: string;
   };
 }
 
 export default function Product({ product }: ProductProps) {
+  const [isCreatingCheckoutSession, setIsCreatingCheckoutSession] =
+    useState(false);
+
   const { isFallback } = useRouter();
 
   if (isFallback) {
     return <p>Loading...</p>;
+  }
+
+  async function handleBuyProduct() {
+    try {
+      setIsCreatingCheckoutSession(true);
+
+      const response = await axios.post('/api/checkout', {
+        priceId: product.defaultPriceId,
+      });
+
+      const { checkoutUrl } = response.data;
+
+      // or (from useRouter) router.push([url]) for internal paths
+      window.location.href = checkoutUrl;
+    } catch {
+      // Observabilidade (Datadog, Sentry e outras)
+      setIsCreatingCheckoutSession(false);
+      alert('Falha ao redirecionar ao checkout!');
+    }
   }
 
   return (
@@ -35,7 +60,13 @@ export default function Product({ product }: ProductProps) {
         <h1>{product.name}</h1>
         <span>{product.price}</span>
         <p>{product.description}</p>
-        <button type="button">Comprar agora</button>
+        <button
+          type="button"
+          onClick={handleBuyProduct}
+          disabled={isCreatingCheckoutSession}
+        >
+          Comprar agora
+        </button>
       </ProductDetails>
     </ProductContainer>
   );
@@ -81,6 +112,7 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
         imageURL: product.images[0],
         price: formattedPrice,
         description: product.description,
+        defaultPriceId: price.id,
       },
     },
     revalidate: revalidateEveryTwoHours,
